@@ -1,0 +1,27 @@
+name: .NET
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+    - name: Restore dependencies
+      run: dotnet restore src/Fortexx/Fortexx.csproj
+    - name: Build
+      run: dotnet build --no-restore src/Fortexx/Fortexx.csproj 
+    - name: Restore dependencies for test
+      run: dotnet restore test/FortexxTests/FortexxTests.csproj 
+    - name: Test
+      run: dotnet test --verbosity normal test/FortexxTests/FortexxTests.csproj
