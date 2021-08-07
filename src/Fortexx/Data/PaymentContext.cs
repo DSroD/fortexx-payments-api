@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 using Fortexx.Models;
+using Fortexx.Models.Api;
 
 namespace Fortexx.Data {
     public class PaymentContext : DbContext, IPaymentContext {
@@ -89,7 +90,7 @@ namespace Fortexx.Data {
 
         public async Task<ActivatePaymentResult> ActivatePaymentAsync(int id) {
             var payment = await Payments
-                    .FindAsync(id);
+                    .FirstOrDefaultAsync(p => p.Id == id);
             if(payment == null) {
                 return new ActivatePaymentResult() {
                     Result = null,
@@ -112,6 +113,18 @@ namespace Fortexx.Data {
 
         public async Task AddGameServerAsync(GameServer s) {
             Servers.Add(s);
+            await SaveChangesAsync();
+        }
+
+        public async Task UpdateGameServerAsync(GameServerDto s) {
+            var server = await Servers.FirstOrDefaultAsync(srv => srv.Id == s.Id);
+            if(server == null) {
+                return;
+            }
+            server.Name = s.Name;
+            server.Game = s.Game;
+            server.IconURL = s.IconURL;
+            server.Information = s.Information;
             await SaveChangesAsync();
         }
 

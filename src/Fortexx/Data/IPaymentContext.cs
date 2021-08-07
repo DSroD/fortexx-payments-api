@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Fortexx.Models;
+using Fortexx.Models.Api;
 
 namespace Fortexx.Data {
 
@@ -20,6 +21,8 @@ namespace Fortexx.Data {
         public Task<ActivatePaymentResult> ActivatePaymentAsync(int id);
 
         public Task AddGameServerAsync(GameServer s);
+
+        public Task UpdateGameServerAsync(GameServerDto s);
 
         public Task<GetGameServerResult> GetGameServerByNameAsync(string name);
 

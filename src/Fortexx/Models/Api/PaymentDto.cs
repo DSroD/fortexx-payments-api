@@ -10,10 +10,10 @@ namespace Fortexx.Models.Api
         public float Value { get; set; }
         public string Currency { get; set; }
         public string User { get; set; }
-        public int ServerId { get; set; }
+        public int? ServerId { get; set; }
         public string? ServerName { get; set; }
-        public int ProductId { get; set; }
-        public string ProductName { get; set; }
+        public int? ProductId { get; set; }
+        public string? ProductName { get; set; }
         public string MainInfo { get; set; }
         public string OtherInfo { get; set; }
         public string Status { get; set; }

@@ -12,9 +12,9 @@ namespace Fortexx.Models {
         public float Value { get; set; }
         public string Currency { get; set; }
         public string User { get; set; }
-        public int ServerId { get; set; }
+        public int? ServerId { get; set; }
         public GameServer? Server { get; set; }
-        public int ProductId { get; set; }
+        public int? ProductId { get; set; }
         public Product? Product { get; set; }
         public string MainInfo { get; set; }
         public string OtherInfo { get; set; }

@@ -170,7 +170,6 @@ namespace Fortexx.Controllers {
         /// <returns>A newly created payment record</returns>
         /// <response code="201">Returns if succesfully created</response>
         /// <response code="403">Provided key is not valid</response>
-        /// <response code="409">Product is not valid</response>
         [HttpPost("{key}/informant")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -178,10 +177,7 @@ namespace Fortexx.Controllers {
             if(!_authSrv.HasFullView(key)) {
                 return StatusCode(403);
             }
-            var product = await _context.GetProductByIdAsync(informant.ProductId);
-            if (product.Response == GetObjectResponse.NOT_FOUND) {
-                return StatusCode(409);
-            }
+            var product = (informant.ProductId != null) ? await _context.GetProductByIdAsync(informant.ProductId ?? 0) : null;
             Payment p = new Payment() {
                     PaymentId = informant.Id,
                     PaymentDate = DateTime.Now,
@@ -189,8 +185,8 @@ namespace Fortexx.Controllers {
                     Value = 0,
                     Currency = "---",
                     User = informant.Nickname,
-                    ServerId = product.Result.GameServerId,
-                    ProductId = informant.ProductId,
+                    ServerId = product?.Result?.GameServerId ?? null,
+                    ProductId = product?.Result?.Id ?? null,
                     MainInfo = "",
                     OtherInfo = informant.Info,
                     Status = "REQUIRES CONFIRMATION",
@@ -250,6 +246,24 @@ namespace Fortexx.Controllers {
             var server = _gameServerDtoSrv.GetModel(serverdto);
             await _context.AddGameServerAsync(server);
             return CreatedAtRoute("GetServerId", new {Key = key, Id = server.Id}, _gameServerDtoSrv.GetDto(server));
+        }
+
+        [HttpPut("/Servers/{key}/update")]
+        public async Task<ActionResult<GameServerDto>> UpdateServer(string key, GameServerDto updates) {
+            if(!_authSrv.HasFullView(key)) {
+                return StatusCode(403);
+            }
+            var exists = await _context.GetGameServerByIdAsync(updates.Id);
+            if (exists.Response == GetObjectResponse.NOT_FOUND) {
+                return StatusCode(404);
+            }
+            else
+            {
+                await _context.UpdateGameServerAsync(updates);
+                exists = await _context.GetGameServerByIdAsync(updates.Id);
+                return _gameServerDtoSrv.GetDto(exists.Result);
+            }
+
         }
 
         [HttpGet("/Servers/{key}/list")]
