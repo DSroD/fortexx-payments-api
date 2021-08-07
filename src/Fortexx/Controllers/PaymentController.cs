@@ -170,12 +170,17 @@ namespace Fortexx.Controllers {
         /// <returns>A newly created payment record</returns>
         /// <response code="201">Returns if succesfully created</response>
         /// <response code="403">Provided key is not valid</response>
+        /// <response code="409">Product is not valid</response>
         [HttpPost("{key}/informant")]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<PaymentDto>> PostInformantAsync(string key, Informant informant) {
             if(!_authSrv.HasFullView(key)) {
                 return StatusCode(403);
+            }
+            var product = await _context.GetProductByIdAsync(informant.ProductId);
+            if (product.Response == GetObjectResponse.NOT_FOUND) {
+                return StatusCode(409);
             }
             Payment p = new Payment() {
                     PaymentId = informant.Id,
@@ -184,7 +189,7 @@ namespace Fortexx.Controllers {
                     Value = 0,
                     Currency = "---",
                     User = informant.Nickname,
-                    ServerId = informant.ServerId,
+                    ServerId = product.Result.GameServerId,
                     ProductId = informant.ProductId,
                     MainInfo = "",
                     OtherInfo = informant.Info,
