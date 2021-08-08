@@ -133,33 +133,61 @@ namespace Fortexx.Controllers {
         /// Create payment record from SMS Payment
         /// </summary>
         /// <param name="key">Key for accessing/modifying payment records</param>
-        /// <param name="smspayment">SMS Payment data</param>
+        /// <param name="payment">SMS Payment data</param>
         /// <returns>A newly created payment record</returns>
-        /// <response code="201">Returns if succesfully created</response>
+        /// <response code="200">Returns if succesfully created</response>
         /// <response code="403">Provided key is not valid</response>
-        [HttpPost("{key}/sms")]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        public async Task<ActionResult<PaymentDto>> PostSMSPaymentAsync(string key, SMSPayment smspayment) {
+        [HttpGet("{key}/sms")]
+        [Consumes("text/plain")] 
+        [Produces("text/plain")]
+        public async Task<ActionResult<string>> PostSMSPaymentAsync(string key, [FromQuery] SMSPayment payment) {
             if(!_authSrv.HasFullView(key)) {
                 return StatusCode(403);
             }
-            Payment p = new Payment() {
-                PaymentId = smspayment.Id,
-                PaymentDate = DateTime.Now,
+
+            string[] smsParts = payment.Sms.Split(" ");
+            string value = smsParts[2];
+            string nickname = smsParts[3];
+            string productCode = smsParts[4];
+            string serverCode = smsParts[5];
+
+            float valuef;
+
+            string currency = (payment.Shortcode.ToString().Length == 4) ? "EUR" : "CZK";
+
+            var product = await _context.GetProductByCodenames(productCode, serverCode);
+
+            var valueString = (currency == "EUR") ? ((value.Length < 2) ? "0" + value + "00" : value + "00") : (value);
+
+            if(product == null || !float.TryParse(value, out valuef)) {
+                _logger.LogInformation(string.Format("{0} send wrong SMS code {1}!", nickname, payment.Sms));
+                var strer = "Zaslany kod neni platny;FREE" + payment.Shortcode + ((currency == "EUR") ? "" : valueString);
+                Response.Headers.Add("Content-Length", System.Text.ASCIIEncoding.ASCII.GetByteCount(strer).ToString());
+                return strer;
+            }
+
+            DateTime dt;
+
+            DateTime.TryParseExact(payment.Timestamp, "s", System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.AssumeUniversal, out dt);
+
+            Payment p = new Payment {
+                PaymentId = payment.Id,
+                PaymentDate = dt,
                 PaymentType = "SMS",
-                Value = 0,
-                Currency = "CZK",
-                User = "",
-                Server = null,
-                Product = null,
-                MainInfo = smspayment.Sms,
-                OtherInfo = "NONE but OTHER",
-                Status = "WAITING",
-                Activated = false
+                Value = valuef,
+                Currency = currency,
+                User = nickname,
+                ServerId = product.GameServerId,
+                ProductId = product.Id,
+                MainInfo = string.Format("Sms: {0}; Country: {1}; Shortcode: {2}", payment.Sms, payment.Country, payment.Shortcode),
+                OtherInfo = string.Format("Operator: {0}; Phone: {1}", payment.Operator, payment.Phone),
+                Status = "PAYMENT REQUESTED",
+                Activated = false,
             };
             await _context.AddPaymentAsync(p);
-            return CreatedAtRoute("GetId", new {Key = key, Id = p.Id}, _paymentDtoSrv.GetDto(p));
+            var str = "Dekujeme za SMS;" + payment.Shortcode + valueString;
+            Response.Headers.Add("Content-Length", System.Text.ASCIIEncoding.ASCII.GetByteCount(str).ToString());
+            return str;
         }
 
         /// <summary>
@@ -253,17 +281,24 @@ namespace Fortexx.Controllers {
             if(!_authSrv.HasFullView(key)) {
                 return StatusCode(403);
             }
-            var exists = await _context.GetGameServerByIdAsync(updates.Id);
-            if (exists.Response == GetObjectResponse.NOT_FOUND) {
-                return StatusCode(404);
+            if(await _context.UpdateGameServerAsync(updates)){
+                var rs = await _context.GetGameServerByIdAsync(updates.Id);
+                return _gameServerDtoSrv.GetDto(rs.Result);
             }
-            else
-            {
-                await _context.UpdateGameServerAsync(updates);
-                exists = await _context.GetGameServerByIdAsync(updates.Id);
-                return _gameServerDtoSrv.GetDto(exists.Result);
+            else {
+                return NotFound();
             }
+        }
 
+        [HttpDelete("/Servers/{key}/delete/{id}")]
+        public async Task<ActionResult> DeleteServer(string key, int id) {
+            if(!_authSrv.HasSuperUserView(key)) {
+                return StatusCode(403);
+            }
+            if(await _context.DeleteGameServerAsync(id)) {
+                return NoContent();
+            }
+            return NotFound();
         }
 
         [HttpGet("/Servers/{key}/list")]
@@ -283,7 +318,7 @@ namespace Fortexx.Controllers {
             }
             var server = await _context.GetGameServerByIdAsync(id);
             if (server.Response == GetObjectResponse.NOT_FOUND) {
-                return StatusCode(404);
+                return NotFound();
             }
             return _gameServerDtoSrv.GetDto(server.Result);
         }
@@ -308,6 +343,31 @@ namespace Fortexx.Controllers {
             return CreatedAtRoute("GetProductId", new {Key = key, Id = product.Id}, _productDtoSrv.GetDto(product));
         }
 
+        [HttpPut("/Products/{key}/update")]
+        public async Task<ActionResult<ProductDto>> UpdateProduct(string key, ProductDto updates) {
+            if(!_authSrv.HasFullView(key)) {
+                return StatusCode(403);
+            }
+            if(await _context.UpdateProductAsync(updates)) {
+                var rs = await _context.GetProductByIdAsync(updates.Id);
+                return _productDtoSrv.GetDto(rs.Result);
+            }
+            else {
+                return NotFound();
+            }
+        }
+
+        [HttpDelete("/Products/{key}/delete/{id}")]
+        public async Task<ActionResult> DeleteProduct(string key, int id) {
+            if(!_authSrv.HasSuperUserView(key)) {
+                return StatusCode(403);
+            }
+            if(await _context.DeleteProductAsync(id)) {
+                return NoContent();
+            }
+            return NotFound();
+        }
+
         [HttpGet("/Products/{key}/id/{id}", Name = "GetProductId")]
         public async Task<ActionResult<ProductDto>> GetProductById(string key, int id) {
             if(!_authSrv.HasLimitedView(key)) {
@@ -315,7 +375,7 @@ namespace Fortexx.Controllers {
             }
             var product = await _context.GetProductByIdAsync(id);
             if(product.Response == GetObjectResponse.NOT_FOUND) {
-                return StatusCode(404);
+                return NotFound();
             }
             return _productDtoSrv.GetDto(product.Result);
         }
@@ -327,7 +387,7 @@ namespace Fortexx.Controllers {
             }
             var server = await _context.GetGameServerByIdAsync(serverId);
             if(server.Response == GetObjectResponse.NOT_FOUND) {
-                return StatusCode(404);
+                return NotFound();
             }
             var products = await _context.GetServerProductsAsync(serverId);
             var rt = products.Select(p => _productDtoSrv.GetDto(p)).ToList<ProductDto>();

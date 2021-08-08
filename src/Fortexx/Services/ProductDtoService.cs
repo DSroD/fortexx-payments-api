@@ -9,6 +9,7 @@ namespace Fortexx.Services {
             return new ProductDto {
                 Id = model.Id,
                 Name = model.Name,
+                CodeName = model.CodeName,
                 PriceEur = model.PriceEur,
                 PriceCzk = model.PriceCzk,
                 GameServerId = model.GameServerId,
@@ -21,6 +22,7 @@ namespace Fortexx.Services {
             return new Product {
                 Id = dto.Id,
                 Name = dto.Name,
+                CodeName = dto.CodeName,
                 PriceEur = dto.PriceEur,
                 PriceCzk = dto.PriceCzk,
                 GameServerId = dto.GameServerId,

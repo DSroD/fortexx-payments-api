@@ -116,16 +116,28 @@ namespace Fortexx.Data {
             await SaveChangesAsync();
         }
 
-        public async Task UpdateGameServerAsync(GameServerDto s) {
+        public async Task<bool> UpdateGameServerAsync(GameServerDto s) {
             var server = await Servers.FirstOrDefaultAsync(srv => srv.Id == s.Id);
             if(server == null) {
-                return;
+                return false;
             }
             server.Name = s.Name;
+            server.CodeName = s.CodeName;
             server.Game = s.Game;
             server.IconURL = s.IconURL;
             server.Information = s.Information;
             await SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteGameServerAsync(int id) {
+            var server = await Servers.FirstOrDefaultAsync(srv => srv.Id == id);
+            if(server == null) {
+                return false;
+            }
+            Servers.Remove(server);
+            await SaveChangesAsync();
+            return true;
         }
 
         public async Task<GetGameServerResult> GetGameServerByNameAsync(string name) {
@@ -171,6 +183,30 @@ namespace Fortexx.Data {
             await SaveChangesAsync();
         }
 
+        public async Task<bool> UpdateProductAsync(ProductDto p) {
+            var product = await Products.FirstOrDefaultAsync(pr => pr.Id == p.Id);
+            if(product == null) {
+                return false;
+            }
+            product.Name = p.Name;
+            product.Information = p.Information;
+            product.PriceEur = p.PriceEur;
+            product.PriceCzk = p.PriceCzk;
+            product.CodeName = p.CodeName;
+            await SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteProductAsync(int id) {
+            var product = await Products.FirstOrDefaultAsync(pr => pr.Id == id);
+            if (product == null) {
+                return false;
+            }
+            Products.Remove(product);
+            await SaveChangesAsync();
+            return true;
+        }
+
         public async Task<GetProductResult> GetProductByIdAsync(int id) {
             var result = await Products
                     .Include(p => p.GameServer)
@@ -193,6 +229,14 @@ namespace Fortexx.Data {
                     .FirstOrDefaultAsync(s => s.Id == serverId);
             var products = server?.Products ?? new List<Product>();
             return products;
+        }
+
+        public async Task<Product> GetProductByCodenames(string productCodename, string serverCodename) {
+            var product = await Products
+                    .Include(p => p.GameServer)
+                    .Where(p => p.GameServer.CodeName == serverCodename)
+                    .FirstOrDefaultAsync(p => p.CodeName == productCodename);
+            return product;
         }
 
     }

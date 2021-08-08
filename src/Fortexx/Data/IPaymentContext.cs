@@ -22,7 +22,9 @@ namespace Fortexx.Data {
 
         public Task AddGameServerAsync(GameServer s);
 
-        public Task UpdateGameServerAsync(GameServerDto s);
+        public Task<bool> UpdateGameServerAsync(GameServerDto s);
+
+        public Task<bool> DeleteGameServerAsync(int id);
 
         public Task<GetGameServerResult> GetGameServerByNameAsync(string name);
 
@@ -31,10 +33,15 @@ namespace Fortexx.Data {
         public Task<List<GameServer>> GetGameServersAsync();
 
         public Task AddProductAsync(Product p);
+
+        public Task<bool> UpdateProductAsync(ProductDto s);
         
+        public Task<bool> DeleteProductAsync(int id);
         public Task<GetProductResult> GetProductByIdAsync(int id);
 
         public Task<List<Product>> GetServerProductsAsync(int serverId);
+
+        public Task<Product> GetProductByCodenames(string ProductCodename, string ServerCodename);
 
     }
 
