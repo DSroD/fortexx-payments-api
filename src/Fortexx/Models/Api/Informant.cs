@@ -9,8 +9,7 @@ namespace Fortexx.Models.Api {
         public string Country { get; init; }
         public string Type { get; init; }
         public string Info { get; init; }
-        public int ProductId { get; init; }
-        public int ServerId { get; init; }
+        public int? ProductId { get; init; }
     }
 
 }

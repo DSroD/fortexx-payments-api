@@ -72,7 +72,7 @@ namespace FortexxTests {
             return p;
         }
 
-        public static Payment GenerateRandomPaymentWithServerProduct(int id, string username, int? serverId, int? productId) {
+        public static Payment GenerateRandomPaymentWithServerProduct(int id, string username, int serverId, int productId) {
             var p = new Payment {
                     Id = id,
                     PaymentId = 101,

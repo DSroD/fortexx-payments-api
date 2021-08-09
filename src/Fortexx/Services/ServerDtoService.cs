@@ -9,6 +9,7 @@ namespace Fortexx.Services {
             return new GameServerDto {
                 Id = model.Id,
                 Name = model.Name,
+                CodeName = model.CodeName,
                 Game = model.Game,
                 IconURL = model.IconURL,
                 Information = model.Information
@@ -19,6 +20,7 @@ namespace Fortexx.Services {
             return new GameServer {
                 Id = dto.Id,
                 Name = dto.Name,
+                CodeName = dto.CodeName,
                 Game = dto.Game,
                 IconURL = dto.IconURL,
                 Information = dto.Information
