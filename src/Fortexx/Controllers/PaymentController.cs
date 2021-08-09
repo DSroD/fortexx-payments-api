@@ -130,13 +130,15 @@ namespace Fortexx.Controllers {
         }
 
         /// <summary>
-        /// Create payment record from SMS Payment
+        /// Create payment record from SMS Payment (mobilniplatby.cz)
         /// </summary>
         /// <param name="key">Key for accessing/modifying payment records</param>
-        /// <param name="payment">SMS Payment data</param>
+        /// <param name="payment">SMS Payment data (from query)</param>
         /// <returns>A newly created payment record</returns>
         /// <response code="200">Returns if succesfully created</response>
+        /// <response code="204">Acknowledges payment delivery message</response>
         /// <response code="403">Provided key is not valid</response>
+        /// <response code="404">Payment not found, delivery message has no meaning</payment>
         [HttpGet("{key}/sms")]
         [Consumes("text/plain")] 
         [Produces("text/plain")]
@@ -191,9 +193,8 @@ namespace Fortexx.Controllers {
                 return str;
             }
             else if(payment.Request != null) { //This kind of violates ORP, rewrite...
-            // TODO: Make this IDEMPOTENT!!
                 var pmt = await _context.GetPaymentByPaymentIdAsync(payment.Request ?? 0);
-                if (pmt == null) {
+                if (pmt == null || pmt?.PaymentType != "SMS" || pmt?.Status != "PAYMENT REQUIRED") {
                     return NotFound();
                 }
                 pmt.Status = payment.Status;
@@ -289,6 +290,14 @@ namespace Fortexx.Controllers {
 
         #region servers endpoints
         
+        /// <summary>
+        /// Create GameServer record
+        /// </summary>
+        /// <returns>Newly created GameServer</returns>
+        /// <param name="key">Key for accessing/modifying payment records</param>
+        /// <param name="serverdto">ServerDto of GameServer to be created</param>
+        /// <response code="200">Server created</response>
+        /// <response code="403">Provided key is not valid</response>
         [HttpPost("/Servers/{key}/create")]
         public async Task<ActionResult<GameServerDto>> CreateGameServer(string key, GameServerDto serverdto) {
             if(!_authSrv.HasFullView(key)) {
@@ -299,6 +308,15 @@ namespace Fortexx.Controllers {
             return CreatedAtRoute("GetServerId", new {Key = key, Id = server.Id}, _gameServerDtoSrv.GetDto(server));
         }
 
+        /// <summary>
+        /// Updates server record based on id in passed Dto
+        /// </summary>
+        /// <returns>Updated server record</returns>
+        /// <param name="key">Key for accessing/modifying payment records</param>
+        /// <param name="updates">GameServerDto with updated record</param>
+        /// <response code="200">Server record updated</response>
+        /// <response code="403">Provided key is not valid</response>
+        /// <response code="404">Server record not found, create it first</response>
         [HttpPut("/Servers/{key}/update")]
         public async Task<ActionResult<GameServerDto>> UpdateServer(string key, GameServerDto updates) {
             if(!_authSrv.HasFullView(key)) {
@@ -313,6 +331,15 @@ namespace Fortexx.Controllers {
             }
         }
 
+        /// <summary>
+        /// Deletes server record
+        /// </summary>
+        /// <returns>Nothing</returns>
+        /// <param name="key">Key for accessing/modifying payment records</param>
+        /// <param name="id">Id of server that should be deleted</param>
+        /// <response code="204">Server successfuly deleted</response>
+        /// <response code="403">Provided key is not valid</response>
+        /// <response code="404">Server record not found</response>
         [HttpDelete("/Servers/{key}/delete/{id}")]
         public async Task<ActionResult> DeleteServer(string key, int id) {
             if(!_authSrv.HasSuperUserView(key)) {
@@ -324,6 +351,13 @@ namespace Fortexx.Controllers {
             return NotFound();
         }
 
+        /// <summary>
+        /// Return all servers from database (up to 1024)
+        /// </summary>
+        /// <returns>All server records</returns>
+        /// <param name="key">Key for accessing/modifying payment records</param>
+        /// <response code="200">Server records</response>
+        /// <response code="403">Provided key is not valid</response>
         [HttpGet("/Servers/{key}/list")]
         public async Task<ActionResult<IEnumerable<GameServerDto>>> GetServerList(string key) {
             if(!_authSrv.HasLimitedView(key)) {
@@ -333,7 +367,16 @@ namespace Fortexx.Controllers {
             var rt = servers.Select(s => _gameServerDtoSrv.GetDto(s)).ToList<GameServerDto>();
             return rt;
         }
-
+        
+        /// <summary>
+        /// Returns game server by Id
+        /// </summary>
+        /// <returns>GameServer record</returns>
+        /// <param name="key">Key for accessing/modifying payment records</param>
+        /// <param name="id">GameServer Id</param>
+        /// <response code="200">Server record</response>
+        /// <response code="403">Provided key is not valid</response>
+        /// <response code="404">Server record not found</response>
         [HttpGet("/Servers/{key}/id/{id}", Name = "GetServerId")]
         public async Task<ActionResult<GameServerDto>> GetGameServerById(string key, int id) {
             if(!_authSrv.HasLimitedView(key)) {
