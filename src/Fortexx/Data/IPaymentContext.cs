@@ -8,6 +8,8 @@ namespace Fortexx.Data {
 
     public interface IPaymentContext {
 
+
+        public Task SaveDbChangesAsync();
         public Task<List<Payment>> GetLastPaymentsAsync(int number);
 
         public Task<List<Payment>> GetNumPaymentsPageAsync(int number, int page);
@@ -15,6 +17,8 @@ namespace Fortexx.Data {
         public Task<List<Payment>> GetPaymentsByNameAsync(string name);
 
         public Task<Payment> GetPaymentByIdAsync(int id);
+
+        public Task<Payment> GetPaymentByPaymentIdAsync(int paymentId);
 
         public Task AddPaymentAsync(Payment p);
 

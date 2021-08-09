@@ -44,6 +44,10 @@ namespace Fortexx.Data {
             
         }
 
+        public async Task SaveDbChangesAsync() {
+            await SaveChangesAsync();
+        }
+
         public async Task<List<Payment>> GetLastPaymentsAsync(int number) {
             var result = await Payments
                     .OrderByDescending(p => p.Id)
@@ -80,6 +84,14 @@ namespace Fortexx.Data {
                     .Include(p => p.Product)
                     .Include(p => p.Server)
                     .FirstOrDefaultAsync(p => p.Id == id);
+            return payment;
+        }
+
+        public async Task<Payment> GetPaymentByPaymentIdAsync(int paymentId) {
+            var payment = await Payments
+                    .Include(p => p.Product)
+                    .Include(p => p.Server)
+                    .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
             return payment;
         }
 

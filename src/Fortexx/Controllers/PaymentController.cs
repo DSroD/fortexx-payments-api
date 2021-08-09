@@ -145,49 +145,72 @@ namespace Fortexx.Controllers {
                 return StatusCode(403);
             }
 
-            string[] smsParts = payment.Sms.Split(" ");
-            string value = smsParts[2];
-            string nickname = smsParts[3];
-            string productCode = smsParts[4];
-            string serverCode = smsParts[5];
+            if (payment.Shortcode != null || payment.Sms != null) {
+                string[] smsParts = payment.Sms.Split(" ");
+                string value = smsParts[2];
+                string nickname = smsParts[3];
+                string productCode = smsParts[4];
+                string serverCode = smsParts[5];
 
-            float valuef;
+                float valuef;
 
-            string currency = (payment.Shortcode.ToString().Length == 4) ? "EUR" : "CZK";
+                string currency = (payment.Shortcode.ToString().Length == 4) ? "EUR" : "CZK";
 
-            var product = await _context.GetProductByCodenames(productCode, serverCode);
+                var product = await _context.GetProductByCodenames(productCode, serverCode);
 
-            var valueString = (currency == "EUR") ? ((value.Length < 2) ? "0" + value + "00" : value + "00") : (value);
+                var valueString = (currency == "EUR") ? ((value.Length < 2) ? "0" + value + "00" : value + "00") : (value);
 
-            if(product == null || !float.TryParse(value, out valuef)) {
-                _logger.LogInformation(string.Format("{0} send wrong SMS code {1}!", nickname, payment.Sms));
-                var strer = "Zaslany kod neni platny;FREE" + payment.Shortcode + ((currency == "EUR") ? "" : valueString);
-                Response.Headers.Add("Content-Length", System.Text.ASCIIEncoding.ASCII.GetByteCount(strer).ToString());
-                return strer;
+                if(product == null || !float.TryParse(value, out valuef)) {
+                    _logger.LogInformation(string.Format("{0} send wrong SMS code {1}!", nickname, payment.Sms));
+                    var strer = "Zaslany kod neni platny;FREE" + payment.Shortcode + ((currency == "EUR") ? "" : valueString);
+                    Response.Headers.Add("Content-Length", System.Text.ASCIIEncoding.ASCII.GetByteCount(strer).ToString());
+                    return strer;
+                }
+
+                DateTime dt;
+
+                DateTime.TryParseExact(payment.Timestamp, "s", System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.AssumeUniversal, out dt);
+
+                Payment p = new Payment {
+                    PaymentId = payment.Id,
+                    PaymentDate = dt,
+                    PaymentType = "SMS",
+                    Value = valuef,
+                    Currency = currency,
+                    User = nickname,
+                    ServerId = product.GameServerId,
+                    ProductId = product.Id,
+                    MainInfo = string.Format("Sms: {0}; Country: {1}; Shortcode: {2}", payment.Sms, payment.Country, payment.Shortcode),
+                    OtherInfo = string.Format("Operator: {0}; Phone: {1}", payment.Operator, payment.Phone),
+                    Status = "PAYMENT REQUESTED",
+                    Activated = false,
+                };
+                await _context.AddPaymentAsync(p);
+                var str = "Dekujeme za SMS;" + payment.Shortcode + valueString;
+                Response.Headers.Add("Content-Length", System.Text.ASCIIEncoding.ASCII.GetByteCount(str).ToString());
+                return str;
+            }
+            else if(payment.Request != null) { //This kind of violates ORP, rewrite...
+            // TODO: Make this IDEMPOTENT!!
+                var pmt = await _context.GetPaymentByPaymentIdAsync(payment.Request ?? 0);
+                if (pmt == null) {
+                    return NotFound();
+                }
+                pmt.Status = payment.Status;
+                Console.WriteLine(payment.Status);
+                if(pmt.Status == "UNDELIVERED") {
+                    pmt.OtherInfo += string.Format("; Reason: {0}", payment.Message);
+                }
+                pmt.OtherInfo += string.Format("; DeliveryId: {0}; DeliveryDate: {1}", payment.Id, payment.Timestamp);
+                await _context.SaveDbChangesAsync();
+                return NoContent();
+            }
+            else
+            {
+                return BadRequest();
             }
 
-            DateTime dt;
-
-            DateTime.TryParseExact(payment.Timestamp, "s", System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.AssumeUniversal, out dt);
-
-            Payment p = new Payment {
-                PaymentId = payment.Id,
-                PaymentDate = dt,
-                PaymentType = "SMS",
-                Value = valuef,
-                Currency = currency,
-                User = nickname,
-                ServerId = product.GameServerId,
-                ProductId = product.Id,
-                MainInfo = string.Format("Sms: {0}; Country: {1}; Shortcode: {2}", payment.Sms, payment.Country, payment.Shortcode),
-                OtherInfo = string.Format("Operator: {0}; Phone: {1}", payment.Operator, payment.Phone),
-                Status = "PAYMENT REQUESTED",
-                Activated = false,
-            };
-            await _context.AddPaymentAsync(p);
-            var str = "Dekujeme za SMS;" + payment.Shortcode + valueString;
-            Response.Headers.Add("Content-Length", System.Text.ASCIIEncoding.ASCII.GetByteCount(str).ToString());
-            return str;
+            
         }
 
         /// <summary>
